@@ -9,4 +9,4 @@ cluster = "devnet"
 wallet = "/Users/ryan/.config/solana/id.json"
 
 [scripts]
-test = "node tests/myepicproject.js"
+test = "node app/tests/myepicproject.js"

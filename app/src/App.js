@@ -98,8 +98,28 @@ const App = () => {
   }
 
   async function sendGif() {
+    if (inputValue.length === 0) {
+      console.log('No gif link given!')
+      return
+    }
+    console.log('Gif link:', inputValue)
+
+    const provider = getProvider()
+    const program = new Program(idl, programId, provider)
+    try {
+      await program.rpc.addGif(inputValue, {
+        accounts: {
+          baseAccount: baseAccount.publicKey,
+          user: provider.wallet.publicKey,
+        },
+      })
+      console.log('GIF sucesfully sent to program', inputValue)
+      await getGifList()
+    } catch (err) {
+      console.log('Error sending gif:', err)
+    }
+
     if (inputValue.length > 0) {
-      console.log('Gif link:', inputValue)
     } else {
       console.log('Empty input. Try again.')
     }

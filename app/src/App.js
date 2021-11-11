@@ -1,16 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js'
 import { Program, Provider, web3 } from '@project-serum/anchor'
+import { decode } from 'base-64'
+import dotenv from 'dotenv'
 import { TWITTER_HANDLE, TWITTER_LINK } from './utils/constants'
 import twitterLogo from './assets/twitter-logo.svg'
 import idl from './idl.json'
 import './App.css'
 
-// SystemProgram is a reference to the Solana runtime.
-const { SystemProgram, Keypair } = web3
+dotenv.config()
 
-// Create a keypair for the account that will hold the GIF data.
-const baseAccount = Keypair.generate()
+// SystemProgram is a reference to the Solana runtime.
+const { SystemProgram } = web3
+
+// Decode base64 keypair and generate baseAccount from it.
+let decoded = decode(process.env.REACT_APP_BASE64_KEYPAIR)
+const json = JSON.parse(decoded)
+const arr = Object.values(json._keypair.secretKey)
+const secret = new Uint8Array(arr)
+const baseAccount = web3.Keypair.fromSecretKey(secret)
 
 // Get our program's id from the IDL file.
 const programId = new PublicKey(idl.metadata.address)
@@ -113,8 +121,8 @@ const App = () => {
           user: provider.wallet.publicKey,
         },
       })
-      console.log('GIF sucesfully sent to program', inputValue)
       await getGifList()
+      setInputValue('')
     } catch (err) {
       console.log('Error sending gif:', err)
     }
@@ -133,7 +141,6 @@ const App = () => {
       const account = await program.account.baseAccount.fetch(
         baseAccount.publicKey
       )
-      console.log('Got the account:', account)
       setGifList(account.gifList)
     } catch (err) {
       console.log('Error in getGifs:', err)
@@ -197,6 +204,12 @@ const App = () => {
       window.removeEventListener('load', checkIfWalletConnected)
     }
   }, [])
+
+  useEffect(() => {
+    if (walletAddress) {
+      getGifList()
+    }
+  }, [getGifList, walletAddress])
 
   return (
     <div className='App'>

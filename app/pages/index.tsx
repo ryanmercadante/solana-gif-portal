@@ -1,23 +1,24 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js'
-import { Program, Provider, web3 } from '@project-serum/anchor'
+import React, { useCallback, useEffect, useState } from 'react'
+import {
+  Connection,
+  PublicKey,
+  clusterApiUrl,
+  Commitment,
+} from '@solana/web3.js'
+import { Idl, Program, Provider, web3 } from '@project-serum/anchor'
 import { decode } from 'base-64'
-import dotenv from 'dotenv'
-import { TWITTER_HANDLE, TWITTER_LINK } from './utils/constants'
-import twitterLogo from './assets/twitter-logo.svg'
-import idl from './idl.json'
-import './App.css'
-
-dotenv.config()
+import { TWITTER_HANDLE, TWITTER_LINK } from '../utils/constants'
+import idl from '../idl.json'
+import styles from '../styles/Home.module.css'
 
 // SystemProgram is a reference to the Solana runtime.
 const { SystemProgram } = web3
 
 // Decode base64 keypair and generate baseAccount from it.
-let decoded = decode(process.env.REACT_APP_BASE64_KEYPAIR)
+let decoded = decode(process.env.NEXT_PUBLIC_BASE64_KEYPAIR as string)
 const json = JSON.parse(decoded)
 const arr = Object.values(json._keypair.secretKey)
-const secret = new Uint8Array(arr)
+const secret = new Uint8Array(arr as unknown as number)
 const baseAccount = web3.Keypair.fromSecretKey(secret)
 
 // Get our program's id from the IDL file.
@@ -27,12 +28,17 @@ const programId = new PublicKey(idl.metadata.address)
 const network = clusterApiUrl('devnet')
 
 // Control's how we want to achknowledge when a transaction is "done."
-const opts = { preflightCommitment: 'processed' }
+const preflightCommitment: Commitment = 'processed'
 
-const App = () => {
-  const [walletAddress, setWalletAddress] = useState(null)
+interface Gif {
+  gifLink: string
+  userAddress: string
+}
+
+function Home({}) {
+  const [walletAddress, setWalletAddress] = useState('')
   const [inputValue, setInputValue] = useState('')
-  const [gifList, setGifList] = useState(null)
+  const [gifList, setGifList] = useState<Gif[] | null>(null)
 
   async function checkIfWalletConnected() {
     const { solana } = window
@@ -61,28 +67,26 @@ const App = () => {
     }
   }
 
-  function handleInputChange(e) {
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     setInputValue(e.target.value)
   }
 
-  function handleFormSubmit(e) {
+  function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault()
     sendGif()
   }
 
   function getProvider() {
-    const connection = new Connection(network, opts.preflightCommitment)
-    const provider = new Provider(
-      connection,
-      window.solana,
-      opts.preflightCommitment
-    )
+    const connection = new Connection(network, preflightCommitment)
+    const provider = new Provider(connection, window.solana, {
+      preflightCommitment,
+    })
     return provider
   }
 
   const createGifAccount = async () => {
     const provider = getProvider()
-    const program = new Program(idl, programId, provider)
+    const program = new Program(idl as Idl, programId, provider)
     console.log('ping')
 
     try {
@@ -110,10 +114,9 @@ const App = () => {
       console.log('No gif link given!')
       return
     }
-    console.log('Gif link:', inputValue)
 
     const provider = getProvider()
-    const program = new Program(idl, programId, provider)
+    const program = new Program(idl as Idl, programId, provider)
     try {
       await program.rpc.addGif(inputValue, {
         accounts: {
@@ -135,7 +138,7 @@ const App = () => {
 
   const getGifList = useCallback(async () => {
     const provider = getProvider()
-    const program = new Program(idl, programId, provider)
+    const program = new Program(idl as Idl, programId, provider)
 
     try {
       const account = await program.account.baseAccount.fetch(
@@ -150,7 +153,7 @@ const App = () => {
 
   const renderNotConnectedContainer = () => (
     <button
-      className='cta-button connect-wallet-button'
+      className={`${styles.ctaButton} ${styles.connectWalletButton}`}
       onClick={connectWallet}
     >
       Connect to Wallet
@@ -161,9 +164,9 @@ const App = () => {
     // If we hit this, it means the program account hasn't been initialized.
     if (gifList === null) {
       return (
-        <div className='connected-container'>
+        <div className={styles.connectContainer}>
           <button
-            className='cta-button submit-gif-button'
+            className={`${styles.ctaButton} ${styles.submitGifButton}`}
             onClick={createGifAccount}
           >
             Do One-Time Initialization For GIF Program Account
@@ -174,7 +177,7 @@ const App = () => {
 
     // Otherwise, account exists. user can submit GIFs.
     return (
-      <div className='connected-container'>
+      <div className={styles.connectedContainer}>
         <form onSubmit={handleFormSubmit}>
           <input
             type='text'
@@ -182,13 +185,16 @@ const App = () => {
             value={inputValue}
             onChange={handleInputChange}
           />
-          <button type='submit' className='cta-button submit-gif-button'>
+          <button
+            type='submit'
+            className={`${styles.ctaButton} ${styles.submitGifButton}`}
+          >
             Submit
           </button>
         </form>
-        <div className='gif-grid'>
+        <div className={styles.gifGrid}>
           {gifList.map((item, index) => (
-            <div className='gif-item' key={index}>
+            <div className={styles.gifItem} key={index}>
               <img src={item.gifLink} alt={item.gifLink} />
             </div>
           ))}
@@ -212,21 +218,27 @@ const App = () => {
   }, [getGifList, walletAddress])
 
   return (
-    <div className='App'>
-      <div className={walletAddress ? 'authed-container' : 'container'}>
-        <div className='header-container'>
-          <p className='header'>🖼 GIF Portal</p>
-          <p className='sub-text'>
+    <div className={styles.app}>
+      <div
+        className={walletAddress ? styles.authedContainer : styles.container}
+      >
+        <div className={styles.headerContainer}>
+          <p className={styles.header}>🖼 GIF Portal</p>
+          <p className={styles.subText}>
             View your GIF collection in the metaverse ✨
           </p>
           {walletAddress
             ? renderConnectedContainer()
             : renderNotConnectedContainer()}
         </div>
-        <div className='footer-container'>
-          <img alt='Twitter Logo' className='twitter-logo' src={twitterLogo} />
+        <div className={styles.footerContainer}>
+          <img
+            alt='Twitter Logo'
+            className={styles.twitterLogo}
+            src='/twitter-logo.svg'
+          />
           <a
-            className='footer-text'
+            className={styles.footerText}
             href={TWITTER_LINK}
             target='_blank'
             rel='noreferrer'
@@ -237,4 +249,4 @@ const App = () => {
   )
 }
 
-export default App
+export default Home
